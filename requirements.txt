@@ -1,0 +1,9 @@
+torch
+torchvision
+pandas
+Pillow
+ipykernel
+jupyter
+notebook
+pytorch-lightning
+torchmetrics
