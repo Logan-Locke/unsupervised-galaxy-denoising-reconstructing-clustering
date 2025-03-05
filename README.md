@@ -4,8 +4,8 @@ This is my repository for the DSCI 410 Project Milestone.
 
 ## Project Overview
 
-This project used the Galaxy Zoo:
-CANDELS (or GZ: CANDELS) dataset to identify and cluster galaxies based on their visual features using an autoencoder.
+This project uses the Galaxy Zoo:
+CANDELS (or GZ: CANDELS) dataset to de-noise, cluster, and classify galaxies based on their visual features using an autoencoder and contrastive learning.
 
 ## Data Overview
 
