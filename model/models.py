@@ -4,37 +4,13 @@ import torch.nn.functional as F
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 
-from dataset.dataset import train_loader, val_loader, test_loader
+from dataset.dataset import train_loader, val_loader, test_loader, denormalize_tensor
 from train_models import (
     ACTIVATION_TYPE, LATENT_DIM, LAMBDA_GALAXY, LAMBDA_BACKGROUND,
     LAMBDA_CONTRAST, TEMPERATURE, model, optimizer,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# -------------------------------
-# Image de-normalizing function
-# -------------------------------
-
-denorm_mean = [0.0441, 0.0464, 0.0484]
-denorm_std = [0.0712, 0.0726, 0.0713]
-denorm_mean_tensor = torch.tensor(denorm_mean).view(1, -1, 1, 1)
-denorm_std_tensor = torch.tensor(denorm_std).view(1, -1, 1, 1)
-
-
-def denormalize_tensor(tensor, mean_tensor=denorm_mean_tensor, std_tensor=denorm_std_tensor):
-    if tensor.dim() == 3:
-        tensor = tensor.unsqueeze(0)
-    if tensor.device.type == 'cpu':
-        mean_tensor = mean_tensor.cpu()
-        std_tensor = std_tensor.cpu()
-    else:
-        mean_tensor = mean_tensor.to(tensor.device)
-        std_tensor = std_tensor.to(tensor.device)
-
-    denorm = tensor * std_tensor + mean_tensor
-
-    return denorm.squeeze(0) if denorm.size(0) == 1 else denorm
 
 
 # -----------------------------

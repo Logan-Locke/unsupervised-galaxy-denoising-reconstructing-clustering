@@ -1,53 +1,60 @@
+print('Importing...')
 import os
 import numpy as np
 import pandas as pd
 from PIL import Image
 import cv2
-
 import torch
 import torchvision.transforms.v2 as T
 from torch.utils.data import Dataset
-
 import galsim
 from galaxy_datasets.pytorch.datasets import GZHubble
 from galaxy_datasets.pytorch.galaxy_datamodule import GalaxyDataModule
+print('Done importing.\n')
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device, torch.version.cuda)
+def device_checker():
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        device = torch.device('mps')
+    else:
+        device = torch.device('cpu')
 
-"""
+    print(f'Using device: {device}\n')
+
+    return device
+
+
 # -------------------------------------------------
 # Load in datasets and create a combined catalog
 # -------------------------------------------------
 
-root_dir = '/projects/dsci410_510/gz_hubble'
+def load_original_datasets(dataset_dir, fresh_download=False, return_og_catalogs=False):
+    if fresh_download:
+        print('Downloading original datasets...')
+        og_train_dataset = GZHubble(root=dataset_dir, train=True, download=True, transform=None)
+        og_test_dataset = GZHubble(root=dataset_dir, train=False, download=True, transform=None)
+    else:
+        print('Loading original datasets from file...')
+        og_train_dataset = GZHubble(root=dataset_dir, train=True, download=False, transform=None)
+        og_test_dataset = GZHubble(root=dataset_dir, train=False, download=False, transform=None)
 
-# Download original train/test subsets
-train_dataset = GZHubble(root=root_dir, train=True, download=True, transform=None)
-test_dataset = GZHubble(root=root_dir, train=False, download=True, transform=None)
+    # Extract train/tesst catalogs
+    og_train_catalog = og_train_dataset.catalog
+    og_test_catalog = og_test_dataset.catalog
 
-# Extract train/test catalogs
-train_catalog = train_dataset.catalog
-test_catalog = test_dataset.catalog
+    # Combine pre-split catalogs
+    combined_catalog = pd.concat([og_train_catalog, og_test_catalog], ignore_index=True)
+    combined_catalog_loc = os.path.join(dataset_dir, 'full_catalog.parquet')
+    combined_catalog.to_parquet(combined_catalog_loc, index=False)
+    print('Saved the new combined catalog to:', combined_catalog_loc)
 
-print("Original train catalog shape:", train_catalog.shape)
-print("Original test catalog shape:", test_catalog.shape)
+    full_catalog = pd.read_parquet(combined_catalog_loc)
 
-# Combine the catalogs
-combined_catalog = pd.concat([train_catalog, test_catalog], ignore_index=True)
-combined_catalog_loc = os.path.join(root_dir, "full_catalog.parquet")
-combined_catalog.to_parquet(combined_catalog_loc, index=False)
-
-print("\nSaved the combined catalog to:", combined_catalog_loc)
-"""
-
-# -------------------------------
-# Load in the combined catalog
-# -------------------------------
-
-root_dir = '/projects/dsci410_510/gz_hubble'
-combined_catalog_loc = os.path.join(root_dir, "full_catalog.parquet")
-full_catalog = pd.read_parquet(combined_catalog_loc)
+    if return_og_catalogs:
+        return og_train_catalog, og_test_catalog, full_catalog
+    else:
+        return full_catalog
 
 
 # -----------------------------------------
@@ -110,43 +117,37 @@ def denormalize_tensor(tensor, mean_tensor=denorm_mean_tensor, std_tensor=denorm
 
 
 # ------------------------------
-# Create GalaxyDataModule
-# --------------------------
+# Transformation pipelines
+# ------------------------------
 
 # Workaround for odd API behavior related to initializing without transforms
 def identity_transform(x):
     return x
 
-
-# ------------------------------
-# Transformation pipelines
-# ------------------------------
-
 # Custom noise transform using GalSim
 class AddNoiseTransform:
     def __init__(self, noise_params):
         self.noise_params = noise_params
-        if "rng" not in self.noise_params or self.noise_params["rng"] is None:
-            self.noise_params["rng"] = galsim.BaseDeviate()
+        if 'rng' not in self.noise_params or self.noise_params['rng'] is None:
+            self.noise_params['rng'] = galsim.BaseDeviate()
 
     def __call__(self, pil_img):
-        # Convert PIL image to numpy array
         arr = np.asarray(pil_img, dtype=np.float32)
         H, W, C = arr.shape
         noisy_arr = np.empty_like(arr)
 
-        # Process each channel individually (GalSim expects a 2D array)
+        # Process each channel individually (GalSim expects a 2-D array)
         for ch in range(C):
             channel_arr = arr[:, :, ch]
             galsim_img = galsim.Image(channel_arr)
 
             poiss_noise = galsim.PoissonNoise(
-                rng=self.noise_params["rng"],
-                sky_level=self.noise_params.get("sky_level", 0.0),
+                rng=self.noise_params['rng'],
+                sky_level=self.noise_params.get('sky_level', 0.0),
             )
             gauss_noise = galsim.GaussianNoise(
-                rng=self.noise_params["rng"],
-                sigma=self.noise_params.get("sigma", 0.0)
+                rng=self.noise_params['rng'],
+                sigma=self.noise_params.get('sigma', 0.0)
             )
 
             # Poisson noise first, then Gaussian noise
@@ -154,39 +155,10 @@ class AddNoiseTransform:
             galsim_img.addNoise(gauss_noise)
 
             noisy_arr[:, :, ch] = np.clip(galsim_img.array, 0, 255)
+
         noisy_arr = noisy_arr.astype(np.uint8)
 
         return Image.fromarray(noisy_arr)
-
-
-# Noise parameters
-noise_params = {
-    "rng"      : galsim.BaseDeviate(),
-    "sky_level": 150.0,  # Poisson
-    "sigma"    : 10.0,  # Gaussian
-}
-
-# Convert PIL → Tensor → float
-base_transform = T.Compose([
-    T.PILToTensor(),
-    T.ConvertImageDtype(torch.float32),
-]
-)
-
-# Normalize transform
-normalize_transform = T.Normalize(mean=denorm_mean, std=denorm_std)
-
-# GalSim noise transform
-noise_transform = AddNoiseTransform(noise_params)
-
-# Geometric transform
-random_geom_transform = T.Compose([
-    T.RandomResizedCrop(224, scale=(0.5, 1.0)),
-    T.RandomHorizontalFlip(p=0.5),
-    T.RandomRotation(degrees=45),
-    T.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
-]
-)
 
 
 # Transform a pair of images
@@ -254,7 +226,7 @@ class DenoisingContrastiveDataset(Dataset):
             pil_img = raw
 
         # Ensure RGB
-        pil_img = pil_img.convert("RGB")
+        pil_img = pil_img.convert('RGB')
 
         # Produce the 4 images: (C1, N1, C2, N2)
         clean1, noisy1, clean2, noisy2 = self.double_view_transform(pil_img)
@@ -268,13 +240,50 @@ class DenoisingContrastiveDataset(Dataset):
         return noisy1, noisy2, clean1, clean2, mask1, mask2
 
 
-single_view_transform = SingleViewTransform(
-    random_geom_transform=random_geom_transform,
-    base_transform=base_transform,
-    noise_transform=noise_transform,
-    normalize_transform=normalize_transform
-)
-double_view_transform = DoubleViewTransform(single_view_transform)
+# -------------------------------
+# Combined transforms function
+# -------------------------------
+
+def create_transforms(poisson=100.0, gaussian=5.0, random_crop=(0.5, 1.0), horizontal_flip=0.5,
+                      random_rot=45, color_jitter=(0.5, 0.5, 0.5, 0.1)):
+    # Define noise parameters
+    noise_params = {
+        'rng'      : galsim.BaseDeviate(),
+        'sky_level': poisson,
+        'sigma'    : gaussian
+    }
+
+    # Initialize noise transform
+    noise_transform = AddNoiseTransform(noise_params)
+
+    # Convert PIL → Tensor → float
+    base_transform = T.Compose([
+        T.PILToTensor(),
+        T.ConvertImageDtype(torch.float32),
+    ])
+
+    # Normalize transform
+    normalize_transform = T.Normalize(mean=denorm_mean, std=denorm_std)
+
+    # Geometric transform
+    random_geom_transform = T.Compose([
+        T.RandomResizedCrop(224, scale=random_crop),
+        T.RandomHorizontalFlip(p=horizontal_flip),
+        T.RandomRotation(degrees=random_rot),
+        T.ColorJitter(brightness=color_jitter[0], contrast=color_jitter[1],
+                      saturation=color_jitter[2], hue=color_jitter[3])
+    ])
+
+    # Create single and double view transforms
+    single_view_transform = SingleViewTransform(
+        random_geom_transform=random_geom_transform,
+        base_transform=base_transform,
+        noise_transform=noise_transform,
+        normalize_transform=normalize_transform
+    )
+    double_view_transform = DoubleViewTransform(single_view_transform)
+
+    return single_view_transform, double_view_transform
 
 
 # ---------------------------------------
@@ -324,27 +333,45 @@ def get_data_loaders(
 
 
 if __name__ == "__main__":
-    batch_size = 64
-    train_fraction = 0.7
-    val_fraction = 0.1
-    test_fraction = 0.2
-    num_workers = 8
-    prefetch_factor = 8
+    device = device_checker()
 
-    train_loader, val_loader, test_loader = get_data_loaders(batch_size, train_fraction,
-                                                             val_fraction, test_fraction,
-                                                             num_workers, prefetch_factor
-                                                             )
+    # dataset_dir = '/projects/dsci410_510/gz_hubble'
+    dataset_dir = 'data/gz_hubble' # UPDATE THIS
 
-    # Send mean and std tensors to device after cpu is done with them
+    full_catalog = load_original_datasets(
+        dataset_dir,
+        fresh_download=False,
+        return_og_catalogs=False
+    )
+
+    # Create transforms
+    print('Creating transforms...')
+    single_view_transform, double_view_transform = create_transforms(
+        poisson=150.0,
+        gaussian=10.0,
+        random_crop=(0.5, 1.0),
+        horizontal_flip=0.5,
+        random_rot=45,
+        color_jitter=(0.5, 0.5, 0.5, 0.1)
+    )
+    print('Transforms created.\n')
+
+    # IF ON GPU, UPDATE DATALOADER PARAMETERS
+    # Create dataloaders
+    print('Creating dataloaders...')
+    train_loader, val_loader, test_loader = get_data_loaders(
+        batch_size=64,
+        train_fraction=0.7,
+        val_fraction=0.1,
+        test_fraction=0.2,
+        num_workers=0,
+        prefetch_factor=0
+    )
+    print('Dataloaders created.\n')
+
+    # Send mean and std tensors to device
     denorm_mean_tensor = denorm_mean_tensor.to(device)
     denorm_std_tensor = denorm_std_tensor.to(device)
 
-    noisy1_batch, _, _, _, _, _ = next(iter(train_loader))
-    print("\nBatch shape:", noisy1_batch.shape)
-
-    # Print sample batch
-    """for images, labels in train_loader:
-        print(f"Batch shape: {images.shape}")
-        print(f"Labels shape: {labels.shape}")
-        break"""
+    noisy1, _, _, _, _, _ = next(iter(train_loader))
+    print('\nBatch shape:', noisy1.shape)
