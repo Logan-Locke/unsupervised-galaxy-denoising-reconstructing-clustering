@@ -135,14 +135,17 @@ def nt_xent_loss(z1, z2, temperature=0.5):
 # ----------------------
 
 # Evaluates test metrics
-def compute_test_metrics(model, test_loader, device):
+def compute_test_metrics(model, test_loader, device, early_stop=None):
     # Initialize SSIM metric
     ssim_metric_denorm = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     ssim_metric_denorm.reset()
 
     model.eval()
     with torch.inference_mode():
-        for noisy1, noisy2, clean1, clean2, mask1, mask2 in test_loader:
+        for batch_idx, (noisy1, noisy2, clean1, clean2, mask1, mask2) in enumerate(test_loader):
+            if early_stop is not None and batch_idx >= early_stop:
+                break
+
             # Move data to device
             noisy1, noisy2 = noisy1.to(device), noisy2.to(device)
             clean1, clean2 = clean1.to(device), clean2.to(device)
