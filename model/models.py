@@ -4,10 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-from dataset.dataset import denormalize_tensor, denorm_mean_tensor, denorm_std_tensor, device_checker
+from dataset.dataset import denormalize_tensor, denorm_mean_tensor, denorm_std_tensor
 print('Done importing in models.py.')
 
-device = device_checker()
 
 # -----------------------------
 #  Weight initialization
@@ -136,12 +135,7 @@ def nt_xent_loss(z1, z2, temperature=0.5):
 # ----------------------
 
 # Evaluates test metrics
-def evaluate_test_metrics():
-    # Initialize running sums for loss calculations
-    test_combined_autoencoder_loss_running = 0.0
-    test_background_loss_running = 0.0
-    test_galaxy_loss_running = 0.0
-
+def compute_test_metrics(model, test_loader, device):
     # Initialize SSIM metric
     ssim_metric_denorm = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     ssim_metric_denorm.reset()
@@ -157,32 +151,6 @@ def evaluate_test_metrics():
             # Forward pass for both augmented views
             outputs1, _ = model(noisy1, return_latent=True)
             outputs2, _ = model(noisy2, return_latent=True)
-
-            # Compute combined autoencoder loss for both views
-            loss1, bg_loss1, gal_loss1 = combined_autoencoder_loss(
-                outputs1,
-                clean1,
-                mask1,
-                LAMBDA_GALAXY,
-                LAMBDA_BACKGROUND
-            )
-            loss2, bg_loss2, gal_loss2 = combined_autoencoder_loss(
-                outputs2,
-                clean2,
-                mask2,
-                LAMBDA_GALAXY,
-                LAMBDA_BACKGROUND
-            )
-
-            # Average losses across both views
-            combined_autoencoder_loss_val = (loss1 + loss2) / 2.0
-            background_loss_val = (bg_loss1 + bg_loss2) / 2.0
-            galaxy_loss_val = (gal_loss1 + gal_loss2) / 2.0
-
-            # Accumulate losses
-            test_combined_autoencoder_loss_running += combined_autoencoder_loss_val.item()
-            test_background_loss_running += background_loss_val.item()
-            test_galaxy_loss_running += galaxy_loss_val.item()
 
             # Denormalize output and target images
             outputs_denorm1 = denormalize_tensor(outputs1, denorm_mean_tensor, denorm_std_tensor)
@@ -204,16 +172,10 @@ def evaluate_test_metrics():
             ssim_metric_denorm.update(outputs_galaxy1, targets_galaxy1)
             ssim_metric_denorm.update(outputs_galaxy2, targets_galaxy2)
 
-    # Compute average losses over the entire test set
-    avg_test_combined_autoencoder_loss = test_combined_autoencoder_loss_running / len(test_loader)
-    avg_test_background_loss = test_background_loss_running / len(test_loader)
-    avg_test_galaxy_loss = test_galaxy_loss_running / len(test_loader)
-
     # Compute overall SSIM score across both views
     test_ssim_score = ssim_metric_denorm.compute().item()
 
-    return (avg_test_combined_autoencoder_loss, avg_test_background_loss, avg_test_galaxy_loss,
-            test_ssim_score)
+    return test_ssim_score
 
 
 # -------------------------------------------
