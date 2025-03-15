@@ -47,12 +47,12 @@ def load_original_datasets(dataset_dir, fresh_download=False, return_og_catalogs
     combined_catalog = pd.concat([og_train_catalog, og_test_catalog], ignore_index=True)
     combined_catalog_loc = os.path.join(dataset_dir, 'full_catalog.parquet')
     combined_catalog.to_parquet(combined_catalog_loc, index=False)
-    print('Saved the new combined catalog to:', combined_catalog_loc)
+    # print('Saved the new combined catalog to:', combined_catalog_loc)
 
     full_catalog = pd.read_parquet(combined_catalog_loc)
 
     if return_og_catalogs:
-        return og_train_catalog, og_test_catalog, full_catalog
+        return full_catalog, og_train_catalog, og_test_catalog
     else:
         return full_catalog
 
@@ -308,7 +308,7 @@ def get_data_loaders(
     )
     datamodule.prepare_data()
     datamodule.setup()
-    print(f'\n{datamodule}')
+    print(f'\n{datamodule}\n')
 
     datamodule.train_dataset = DenoisingContrastiveDataset(
         base_dataset=datamodule.train_dataset,

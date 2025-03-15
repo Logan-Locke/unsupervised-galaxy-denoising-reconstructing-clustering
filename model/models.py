@@ -4,10 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-from dataset.dataset import denormalize_tensor, denorm_mean_tensor, denorm_std_tensor
+from dataset.dataset import denormalize_tensor, denorm_mean_tensor, denorm_std_tensor, device_checker
 print('Done importing in models.py.')
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = device_checker()
 
 # -----------------------------
 #  Weight initialization

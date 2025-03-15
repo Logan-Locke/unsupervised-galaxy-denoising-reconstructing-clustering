@@ -1,4 +1,4 @@
-torch
+pytorch
 torchvision
 pandas
 matplotlib
@@ -7,9 +7,12 @@ jupyter
 notebook
 torchmetrics
 numpy
-cv2
+opencv
 galsim
 tqdm
 plotly
 pytorch_msssim
 albumenations<2
+umap-learn
+hdbscan
+scikit-learn
