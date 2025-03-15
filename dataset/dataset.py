@@ -1,4 +1,4 @@
-print('Importing...')
+print('Importing packages in dataset.py...')
 import os
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 import galsim
 from galaxy_datasets.pytorch.datasets import GZHubble
 from galaxy_datasets.pytorch.galaxy_datamodule import GalaxyDataModule
-print('Done importing.\n')
+print('Done importing in dataset.py.')
 
 def device_checker():
     if torch.cuda.is_available():
@@ -20,7 +20,7 @@ def device_checker():
     else:
         device = torch.device('cpu')
 
-    print(f'Using device: {device}\n')
+    print(f'\nUsing device: {device}\n')
 
     return device
 
@@ -291,6 +291,7 @@ def create_transforms(poisson=100.0, gaussian=5.0, random_crop=(0.5, 1.0), horiz
 # ---------------------------------------
 
 def get_data_loaders(
+        full_catalog, double_view_transform,
         batch_size=64, train_fraction=0.7, val_fraction=0.1, test_fraction=0.2, num_workers=4,
         prefetch_factor=4, return_datasets=False
         ):
@@ -356,10 +357,13 @@ if __name__ == "__main__":
     )
     print('Transforms created.\n')
 
-    # IF ON GPU, UPDATE DATALOADER PARAMETERS
+    # **IF USING GPU, UPDATE DATALOADER PARAMETERS**
+
     # Create dataloaders
     print('Creating dataloaders...')
     train_loader, val_loader, test_loader = get_data_loaders(
+        full_catalog,
+        double_view_transform,
         batch_size=64,
         train_fraction=0.7,
         val_fraction=0.1,

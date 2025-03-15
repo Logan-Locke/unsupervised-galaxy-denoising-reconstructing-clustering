@@ -1,9 +1,14 @@
-import torch
+print('Importing packages in train_models.py...')
 import torch.optim as optim
 from tqdm import tqdm
-
-from dataset.dataset import train_loader, val_loader, test_loader
+from dataset.dataset import (
+    device_checker,
+    load_original_datasets,
+    create_transforms,
+    get_data_loaders,
+)
 from models import *
+print('Done importing in train_models.py.')
 
 
 # ------------------
@@ -11,11 +16,13 @@ from models import *
 # ------------------
 
 def train_model(
-        NUM_EPOCHS, ACTIVATION_TYPE, LATENT_DIM, LEARNING_RATE, LAMBDA_GALAXY,
-        LAMBDA_BACKGROUND, LAMBDA_CONTRAST, TEMPERATURE, COMPUTE_TEST_METRICS, model,
-        optimizer, train_loader, val_loader, test_loader, device=device, save_model=True
+        model, num_epochs, learning_rate, lambda_galaxy, lambda_background, lambda_contrast,
+        lambda_temperature, train_loader, early_stop=None, save_model=True
 ):
-    for epoch in range(NUM_EPOCHS):
+    model.apply(init_weights_xav).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    for epoch in range(num_epochs):
         model.train()
 
         # Running sums to track losses across batches
@@ -28,9 +35,9 @@ def train_model(
         num_batches = 0
 
         for batch_idx, (noisy1, noisy2, clean1, clean2, mask1, mask2) in enumerate(tqdm(train_loader)):
-            # Optional early stopping
-            if batch_idx >= 100:
-                break
+            if early_stop is not None:
+                if batch_idx >= early_stop:
+                    break
 
             num_batches += 1
 
@@ -48,15 +55,15 @@ def train_model(
                 recon1,
                 clean1,
                 mask1,
-                LAMBDA_GALAXY,
-                LAMBDA_BACKGROUND
+                lambda_galaxy,
+                lambda_background
             )
             rec_total2, gal_loss2, bg_loss2 = combined_autoencoder_loss(
                 recon2,
                 clean2,
                 mask2,
-                LAMBDA_GALAXY,
-                LAMBDA_BACKGROUND
+                lambda_galaxy,
+                lambda_background
             )
 
             # Average reconstruction losses across both views
@@ -65,10 +72,10 @@ def train_model(
             bg_loss = (bg_loss1 + bg_loss2) / 2.0
 
             # Contrastive loss
-            loss_contrast = nt_xent_loss(latent1, latent2, temperature=TEMPERATURE)
+            loss_contrast = nt_xent_loss(latent1, latent2, temperature=lambda_temperature)
 
             # Total loss
-            loss = loss_rec + (LAMBDA_CONTRAST * loss_contrast)
+            loss = loss_rec + (lambda_contrast * loss_contrast)
 
             # Backpropagation
             optimizer.zero_grad()
@@ -90,7 +97,7 @@ def train_model(
         avg_con_loss = running_con_loss / num_batches
 
         tqdm.write(
-            f"Epoch {epoch + 1}/{NUM_EPOCHS} | "
+            f"Epoch {epoch + 1}/{num_epochs} | "
             f"Total: {avg_total_loss:.3f} | Rec: {avg_rec_loss:.3f} | "
             f"Gal: {avg_gal_loss:.3f} | BG: {avg_bg_loss:.3f} | Contrast: {avg_con_loss:.3f}"
         )
@@ -101,23 +108,41 @@ def train_model(
 # Score: {test_galaxy_ssim_score:.3f}")
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device, torch.version.cuda)
+    # Initialize
+    device = device_checker()
+    dataset_dir = 'data/gz_hubble'
+    full_catalog = load_original_datasets(dataset_dir, fresh_download=False, return_og_catalogs=False)
 
-    NUM_EPOCHS = 3
-    ACTIVATION_TYPE = 'prelu'
-    LATENT_DIM = 256
-    LEARNING_RATE = 1e-3
-    LAMBDA_GALAXY = 0.8
-    LAMBDA_BACKGROUND = 0.2
-    LAMBDA_CONTRAST = 0.75
-    TEMPERATURE = 0.75
-    COMPUTE_TEST_METRICS = False
+    # **IF USING GPU, UPDATE DATALOADER PARAMETERS**
 
-    # Initialize model, weights, and optimizer
-    model = UNetAutoencoder().apply(init_weights_xav).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    # Create dataloaders
+    single_view_transform, double_view_transform = create_transforms()
+    train_loader, val_loader, test_loader = get_data_loaders(
+        full_catalog,
+        double_view_transform,
+        batch_size=64,
+        train_fraction=0.7,
+        val_fraction=0.1,
+        test_fraction=0.2,
+        num_workers=0,
+        prefetch_factor=0
+    )
 
-    train_model(NUM_EPOCHS, ACTIVATION_TYPE, LATENT_DIM, LEARNING_RATE, LAMBDA_GALAXY,
-                LAMBDA_BACKGROUND, LAMBDA_CONTRAST, TEMPERATURE, COMPUTE_TEST_METRICS, model,
-                optimizer, train_loader, val_loader, test_loader, device=device, save_model=True)
+    unet_model = UNetAutoencoder()
+    custom_model = CustomAutoencoder(
+        activation_type='prelu',
+        latent_dim=32
+    )
+
+    train_model(
+        model=custom_model,
+        num_epochs=3,
+        learning_rate=1e-3,
+        lambda_galaxy=0.8,
+        lambda_background=0.2,
+        lambda_contrast=0.75,
+        lambda_temperature=0.75,
+        train_loader=train_loader,
+        early_stop=10,
+        save_model=True
+    )
