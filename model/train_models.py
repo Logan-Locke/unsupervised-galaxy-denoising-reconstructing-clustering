@@ -30,106 +30,161 @@ def get_unique_model_path(model_class_name, base_dir="model/saved_models", ext="
     return file_path
 
 
-# ------------------
-# Training loop
-# ------------------
+def compute_batch_losses(
+        model, noisy1, noisy2, clean1, clean2, mask1, mask2,
+        lambda_galaxy, lambda_background, contrast_weight, lambda_temperature
+        ):
+    # Forward pass: obtain reconstructions and latent representations
+    recon1, latent1 = model(noisy1, return_latent=True)
+    recon2, latent2 = model(noisy2, return_latent=True)
+
+    # Compute reconstruction, galaxy, and background losses for each augmented view
+    rec_total1, gal_loss1, bg_loss1 = combined_autoencoder_loss(
+        recon1, clean1, mask1, lambda_galaxy, lambda_background
+    )
+    rec_total2, gal_loss2, bg_loss2 = combined_autoencoder_loss(
+        recon2, clean2, mask2, lambda_galaxy, lambda_background
+    )
+
+    # Average the losses from the two views
+    loss_rec = (rec_total1 + rec_total2) / 2.0
+    gal_loss = (gal_loss1 + gal_loss2) / 2.0
+    bg_loss = (bg_loss1 + bg_loss2) / 2.0
+
+    # Compute contrastive loss
+    loss_contrast = nt_xent_loss(latent1, latent2, temperature=lambda_temperature)
+
+    # Total loss (for training, this is the loss we backpropagate)
+    total_loss = loss_rec + (contrast_weight * loss_contrast)
+
+    return {
+        "total"   : total_loss,
+        "rec"     : loss_rec,
+        "gal"     : gal_loss,
+        "bg"      : bg_loss,
+        "contrast": loss_contrast
+    }
+
 
 def train_model(
-        model, num_epochs, learning_rate, lambda_galaxy, lambda_background, lambda_contrast,
-        lambda_temperature, train_loader, early_stop=None, save_model=True
-):
-    model.apply(init_weights_xav).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        model, train_loader, optimizer, lambda_galaxy, lambda_background,
+        contrast_weight, lambda_temperature, early_stop=None
+        ):
+    model.train()
+    running = {"total": 0.0, "rec": 0.0, "gal": 0.0, "bg": 0.0, "contrast": 0.0}
+    num_batches = 0
 
-    for epoch in range(num_epochs):
-        model.train()
+    for batch_idx, (noisy1, noisy2, clean1, clean2, mask1, mask2) in enumerate(tqdm(train_loader, desc="Training Batches", leave=False)):
+        if early_stop is not None and batch_idx >= early_stop:
+            break
 
-        # Running sums to track losses across batches
-        running_total_loss = 0.0
-        running_rec_loss = 0.0
-        running_gal_loss = 0.0
-        running_bg_loss = 0.0
-        running_con_loss = 0.0
+        num_batches += 1
 
-        num_batches = 0
+        # Move batch to device
+        noisy1, noisy2 = noisy1.to(device), noisy2.to(device)
+        clean1, clean2 = clean1.to(device), clean2.to(device)
+        mask1, mask2 = mask1.to(device), mask2.to(device)
 
-        for batch_idx, (noisy1, noisy2, clean1, clean2, mask1, mask2) in enumerate(tqdm(train_loader)):
-            if early_stop is not None:
-                if batch_idx >= early_stop:
-                    break
+        optimizer.zero_grad()
+        losses = compute_batch_losses(model, noisy1, noisy2, clean1, clean2, mask1, mask2,
+                                      lambda_galaxy, lambda_background, contrast_weight,
+                                      lambda_temperature
+                                      )
+        losses["total"].backward()
+        optimizer.step()
+
+        # Accumulate metrics
+        for key in running:
+            running[key] += losses[key].item()
+
+    metrics = {k: (v / num_batches) for k, v in running.items()}
+    return metrics
+
+
+def evaluate_model(
+        model, data_loader, lambda_galaxy, lambda_background,
+        contrast_weight, lambda_temperature, early_stop
+        ):
+    model.eval()
+    running = {"total": 0.0, "rec": 0.0, "gal": 0.0, "bg": 0.0, "contrast": 0.0}
+    num_batches = 0
+
+    with torch.no_grad():
+        for batch_idx, (noisy1, noisy2, clean1, clean2, mask1, mask2) in enumerate(data_loader):
+            if early_stop is not None and batch_idx >= early_stop:
+                break
 
             num_batches += 1
 
-            # Move data to device
+            # Move batch to device
             noisy1, noisy2 = noisy1.to(device), noisy2.to(device)
             clean1, clean2 = clean1.to(device), clean2.to(device)
             mask1, mask2 = mask1.to(device), mask2.to(device)
 
-            # Forward pass
-            recon1, latent1 = model(noisy1, return_latent=True)
-            recon2, latent2 = model(noisy2, return_latent=True)
+            losses = compute_batch_losses(model, noisy1, noisy2, clean1, clean2, mask1, mask2,
+                                          lambda_galaxy, lambda_background, contrast_weight,
+                                          lambda_temperature
+                                          )
+            for key in running:
+                running[key] += losses[key].item()
 
-            # Compute reconstruction loss for each augmented view
-            rec_total1, gal_loss1, bg_loss1 = combined_autoencoder_loss(
-                recon1,
-                clean1,
-                mask1,
-                lambda_galaxy,
-                lambda_background
-            )
-            rec_total2, gal_loss2, bg_loss2 = combined_autoencoder_loss(
-                recon2,
-                clean2,
-                mask2,
-                lambda_galaxy,
-                lambda_background
-            )
+    metrics = {k: (v / num_batches) for k, v in running.items()}
+    return metrics
 
-            # Average reconstruction losses across both views
-            loss_rec = (rec_total1 + rec_total2) / 2.0
-            gal_loss = (gal_loss1 + gal_loss2) / 2.0
-            bg_loss = (bg_loss1 + bg_loss2) / 2.0
+# ------------------
+# Training loop
+# ------------------
 
-            # Contrastive loss
-            loss_contrast = nt_xent_loss(latent1, latent2, temperature=lambda_temperature)
+def training_loop(
+        model, num_epochs, learning_rate, lambda_galaxy, lambda_background, contrast_weight,
+        lambda_temperature, train_loader, val_loader, early_stop=None, log_val_metrics=False, save_model=True
+):
+    model.apply(init_weights_xav).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-            # Total loss
-            loss = loss_rec + (lambda_contrast * loss_contrast)
+    # Initialize histories
+    train_history = {"total": [], "rec": [], "gal": [], "bg": [], "contrast": []}
+    val_history = {"total": [], "rec": [], "gal": [], "bg": [], "contrast": []}
 
-            # Backpropagation
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            # Accumulate batch losses
-            running_total_loss += loss.item()
-            running_rec_loss += loss_rec.item()
-            running_gal_loss += gal_loss.item()
-            running_bg_loss += bg_loss.item()
-            running_con_loss += loss_contrast.item()
-
-        # Compute epoch averages
-        avg_total_loss = running_total_loss / num_batches
-        avg_rec_loss = running_rec_loss / num_batches
-        avg_gal_loss = running_gal_loss / num_batches
-        avg_bg_loss = running_bg_loss / num_batches
-        avg_con_loss = running_con_loss / num_batches
-
+    for epoch in range(num_epochs):
+        # Train for one epoch
+        train_metrics = train_model(
+            model, train_loader, optimizer, lambda_galaxy, lambda_background, contrast_weight,
+            lambda_temperature, early_stop
+        )
         tqdm.write(
             f"Epoch {epoch + 1}/{num_epochs} | "
-            f"Total: {avg_total_loss:.3f} | Rec: {avg_rec_loss:.3f} | "
-            f"Gal: {avg_gal_loss:.3f} | BG: {avg_bg_loss:.3f} | Contrast: {avg_con_loss:.3f}"
+            f"Train - Total: {train_metrics['total']:.3f} | Rec: {train_metrics['rec']:.3f} | "
+            f"Gal: {train_metrics['gal']:.3f} | BG: {train_metrics['bg']:.3f} | Contrast: {train_metrics['contrast']:.3f}"
         )
+
+        if log_val_metrics:
+            print(f"Evaluating on validation set...")
+            val_metrics = evaluate_model(
+                model, val_loader, lambda_galaxy, lambda_background, contrast_weight,
+                lambda_temperature, early_stop
+            )
+
+            # Store each metric
+            for key in train_history:
+                train_history[key].append(train_metrics[key])
+                val_history[key].append(val_metrics[key])
+
+            tqdm.write(
+                f"Epoch {epoch+1}/{num_epochs} | Validation - Total: {val_metrics['total']:.3f} | Rec: {val_metrics['rec']:.3f} | "
+                f"Gal: {val_metrics['gal']:.3f} | BG: {val_metrics['bg']:.3f} | Contrast: {val_metrics['contrast']:.3f}"
+            )
+        else:
+            for key in train_history:
+                train_history[key].append(train_metrics[key])
+
+    print(compute_test_metrics(model, test_loader, device))
 
     if save_model:
         save_path = get_unique_model_path(model.__class__.__name__)
         torch.save(model.state_dict(), save_path)
         print(f"Model saved to {save_path}")
 
-# avg_test_combined_autoencoder_loss, avg_test_background_loss, avg_test_galaxy_loss,
-# test_galaxy_ssim_score = evaluate_test_metrics()
-# print(f"\n(Final Test) Combined Loss: {avg_test_combined_autoencoder_loss:.3f} | Galaxy SSIM
-# Score: {test_galaxy_ssim_score:.3f}")
 
 if __name__ == "__main__":
     # Initialize
@@ -144,12 +199,12 @@ if __name__ == "__main__":
     train_loader, val_loader, test_loader = get_data_loaders(
         full_catalog,
         double_view_transform,
-        batch_size=16,
+        batch_size=256,
         train_fraction=0.7,
         val_fraction=0.1,
         test_fraction=0.2,
-        num_workers=0,
-        prefetch_factor=0
+        num_workers=4,
+        prefetch_factor=4
     )
 
     unet_model = UNetAutoencoder()
@@ -158,15 +213,17 @@ if __name__ == "__main__":
         latent_dim=32
     )
 
-    train_model(
+    training_loop(
         model=custom_model,
         num_epochs=3,
         learning_rate=1e-3,
         lambda_galaxy=0.8,
         lambda_background=0.2,
-        lambda_contrast=0.75,
+        contrast_weight=0.75,
         lambda_temperature=0.75,
         train_loader=train_loader,
-        early_stop=25,
+        val_loader=val_loader,
+        early_stop=10,
+        log_val_metrics=False,
         save_model=True
     )
