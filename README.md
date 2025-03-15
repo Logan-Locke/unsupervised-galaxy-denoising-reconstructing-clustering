@@ -50,10 +50,14 @@ Denoising/Reconstruction:
 - Foreground SSIM score of ~0.96
   - Value of 1 is considered "perfect"
 
+Fundamentally, autoencoders cannot reconstruct images that are cleaner than the target images—they can only reduce the amount of noise to that which is present in the target images. Thus, since we do not have access to a subset of ultra-clean galaxy images, and we instead use *all* galaxy images for the autoencoding, the autoencoder would normally only learn how to remove the artificial noise introducted to the input images during the pre-processing stage. That being said, through the clever use of the binary image masks and specific loss functions, this model's autoencoder *does* learn how to remove the noise found in the background of the image. The noise that overlaps the galaxies themselves still largely remains in tact for the reasons mentioned above, however.
+
+Below are some examples of how the model de-noises and reconstructs the input images.:
+
 <img alt="Denoising, Ex. 1" height="200" src="assets/denoising-1.png" width="550"/>
 <img alt="Denoising, Ex. 3" height="200" src="assets/denoising-2.png" width="550"/>
 <img alt="Denoising, Ex. 3" height="200" src="assets/denoising-3.png" width="550"/>
- 
+
 **Clustering:**
 - HDBSCAN with three clusters:
   - Silhouette Score of ~0.48
