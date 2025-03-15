@@ -31,6 +31,8 @@ The process is as follows:
 3. Duplicate C1 and C2 and add artificial noise (Poisson + Gaussian) to get the "noisy" images (N1, N2)
 4. Using C1 and C2, calculate the binary image masks (M1, M2)
 
+<img alt="Masking" height="400" src="assets/masking.png" width="700"/>
+
 Autoencoder:
 - Feed in N1 --> reconstruct C1
 - Feed in N2 --> reconstruct C2
@@ -45,6 +47,10 @@ Contrastive Learning:
 Denoising/Reconstruction:
 - Foreground SSIM score of ~0.96
   - Value of 1 is considered "perfect"
+
+<img alt="Denoising, Ex. 1" height="200" src="assets/denoising-1.png" width="550"/>
+<img alt="Denoising, Ex. 3" height="200" src="assets/denoising-2.png" width="550"/>
+<img alt="Denoising, Ex. 3" height="200" src="assets/denoising-3.png" width="550"/>
  
 Clustering:
 - HDBSCAN with three clusters:
@@ -55,7 +61,16 @@ Clustering:
   - 0.25 = "weak"
   - 0.50 = "moderate"
   - 0.70 = "strong"
+ 
+
+<img alt="UMAP Visualization of HDBSCAN" height="400" src="assets/hdbscan-umap.png" width="500"/>
+<img alt="UMAP Visualization of K-means" height="400" src="assets/kmeans-umap.png" width="500"/>
+<img alt="t-SNE Visualization of HDBSCAN" height="400" src="assets/hdbscan-tsne.png" width="500"/>
+<img alt="t-SNE Visualization of K-means" height="400" src="assets/kmeans-tsne.png" width="500"/>
   
+<img alt="Example Images from Cluster Group 0" height="600" src="assets/group-0.png" width="600"/>
+<img alt="Example Images from Cluster Group 1" height="600" src="assets/group-1.png" width="600"/>
+<img alt="Example Images from Cluster Group 2" height="600" src="assets/group-2.png" width="600"/>
 
 ## Conclusion
 
