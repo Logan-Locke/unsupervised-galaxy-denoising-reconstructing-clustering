@@ -25,22 +25,24 @@ The total autoencoder loss is the combination of the background and foreground l
 
 For the contrastive learning, NT-Xent (Normalized Temperature-Scaled Cross-Entropy) loss is used, which is then combined with the total autoencoder loss to obtain the loss for the entire model.
 
-The process is as follows:
+**The pre-processing pipeline:**
 1. Take a "clean" image (C)
 2. Duplicate C and apply random geometric transforms (C1, C2)
 3. Duplicate C1 and C2 and add artificial noise (Poisson + Gaussian) to get the "noisy" images (N1, N2)
 4. Using C1 and C2, calculate the binary image masks (M1, M2)
 
+Below is an look of what one component of the dataset looks like (two clean images, two noisy images, and two masks). For each of the images in the training dataset (~80,000), the following is created:
+
 <img alt="Masking" height="400" src="assets/masking.png" width="700"/>
 
-Autoencoder:
-- Feed in N1 --> reconstruct C1
-- Feed in N2 --> reconstruct C2
-
-Contrastive Learning:
-- Treat N1 and N2 as the positive pair
-- Since it is unsupervised/self-supervised, we do not have any explicit negative pairs
-  - The other images are implicitly treated as such
+**Basic overview of the model steps:**
+- **Autoencoder:**
+  - Feed in N1 --> reconstruct C1
+  - Feed in N2 --> reconstruct C2
+- **Contrastive Learning:**
+  - Treat N1 and N2 as the positive pair
+  - Since it is unsupervised/self-supervised, we do not have any explicit negative pairs
+    - The other images are implicitly treated as such
 
 ## Results
 
@@ -52,7 +54,7 @@ Denoising/Reconstruction:
 <img alt="Denoising, Ex. 3" height="200" src="assets/denoising-2.png" width="550"/>
 <img alt="Denoising, Ex. 3" height="200" src="assets/denoising-3.png" width="550"/>
  
-Clustering:
+**Clustering:**
 - HDBSCAN with three clusters:
   - Silhouette Score of ~0.48
 - K-means with eight clusters:
@@ -75,7 +77,7 @@ Below are some example images from each cluster identified by HDBSCAN. There app
 
 ## Conclusion
 
-Outcomes:
+**Outcomes:**
 - Reconstructions were consistently really good
 - Denoising was solid with some minor imperfections/artifacts
 - Clustering/latent space representations were decent considering it did not have access to labeled data
@@ -89,3 +91,4 @@ Although contrastive learning did help make the latent space representations mor
 <img alt="Decision Tree Questions" height="800" src="assets/gz_hubble_decision_tree_questions.png" width="700"/>
 <img alt="Decision Tree Diagram" height="600" src="assets/gz_hubble_decision_tree_diagram.png" width="600"/>
 
+Although my initial goal was not met, my model still provides two useful tools while remaining entirely unsupervised: cleaning images and clustering images. Additionally, depending on your needs/goals, you could choose to use only one of these tools. By implementing some of the previously mentioned changes or through further tuning, I believe this model could perform even better and maybe even produce clusters that more closely resemble the morphology categories. Because only self-supervision was used, this model could easily be adapted for use in any of the other projects from Galaxy Zoo, such as GZ: 1, GZ: 2, GZ: CANDELS, GZ: DECaLS, and GZ: DESI. 
