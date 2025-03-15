@@ -68,9 +68,9 @@ Clustering:
 <img alt="t-SNE Visualization of HDBSCAN" height="400" src="assets/hdbscan-tsne.png" width="500"/>
 <img alt="t-SNE Visualization of K-means" height="400" src="assets/kmeans-tsne.png" width="500"/>
   
-<img alt="Example Images from Cluster Group 0" height="600" src="assets/group-0.png" width="600"/>
-<img alt="Example Images from Cluster Group 1" height="600" src="assets/group-1.png" width="600"/>
-<img alt="Example Images from Cluster Group 2" height="600" src="assets/group-2.png" width="600"/>
+<img alt="Example Images from Cluster Group 0" height="500" src="assets/group-0.png" width="500"/>
+<img alt="Example Images from Cluster Group 1" height="500" src="assets/group-1.png" width="500"/>
+<img alt="Example Images from Cluster Group 2" height="500" src="assets/group-2.png" width="500"/>
 
 ## Conclusion
 
