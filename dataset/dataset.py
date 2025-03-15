@@ -308,7 +308,7 @@ def get_data_loaders(
     )
     datamodule.prepare_data()
     datamodule.setup()
-    print(datamodule)
+    print(f'\n{datamodule}')
 
     datamodule.train_dataset = DenoisingContrastiveDataset(
         base_dataset=datamodule.train_dataset,
@@ -328,7 +328,7 @@ def get_data_loaders(
     test_loader = datamodule.test_dataloader()
 
     if return_datasets:
-        return datamodule.train_dataset, datamodule.val_dataset, datamodule.test_dataset
+        return train_loader, val_loader, test_loader, datamodule.train_dataset, datamodule.val_dataset, datamodule.test_dataset
     else:
         return train_loader, val_loader, test_loader
 

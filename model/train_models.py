@@ -102,6 +102,10 @@ def train_model(
             f"Gal: {avg_gal_loss:.3f} | BG: {avg_bg_loss:.3f} | Contrast: {avg_con_loss:.3f}"
         )
 
+    if save_model:
+        torch.save(model.state_dict(), f"model/saved_models/{model.__class__.__name__}.pt")
+        print(f"Model saved to model/saved_models/{model.__class__.__name__}.pt")
+
 # avg_test_combined_autoencoder_loss, avg_test_background_loss, avg_test_galaxy_loss,
 # test_galaxy_ssim_score = evaluate_test_metrics()
 # print(f"\n(Final Test) Combined Loss: {avg_test_combined_autoencoder_loss:.3f} | Galaxy SSIM
@@ -110,8 +114,8 @@ def train_model(
 if __name__ == "__main__":
     # Initialize
     device = device_checker()
-    dataset_dir = 'data/gz_hubble'
-    full_catalog = load_original_datasets(dataset_dir, fresh_download=False, return_og_catalogs=False)
+    dataset_dir = 'data/gz_hubble'  # UPDATE THIS
+    full_catalog = load_original_datasets(dataset_dir)
 
     # **IF USING GPU, UPDATE DATALOADER PARAMETERS**
 
@@ -120,7 +124,7 @@ if __name__ == "__main__":
     train_loader, val_loader, test_loader = get_data_loaders(
         full_catalog,
         double_view_transform,
-        batch_size=64,
+        batch_size=4,
         train_fraction=0.7,
         val_fraction=0.1,
         test_fraction=0.2,
@@ -143,6 +147,6 @@ if __name__ == "__main__":
         lambda_contrast=0.75,
         lambda_temperature=0.75,
         train_loader=train_loader,
-        early_stop=10,
+        early_stop=1,
         save_model=True
     )
