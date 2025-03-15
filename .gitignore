@@ -1,1 +1,4 @@
-/gz_candels_tensors/
+/data
+/misc
+/dataset/dataloader.py
+/dataset/gz_api.ipynb
