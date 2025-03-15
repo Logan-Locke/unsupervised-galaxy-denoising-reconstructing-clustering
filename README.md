@@ -61,10 +61,13 @@ Clustering:
   - 0.25 = "weak"
   - 0.50 = "moderate"
   - 0.70 = "strong"
- 
 
+Below are the UMAP and t-SNE visualizations of the clusters identified by HDBSCAN. As you can see, there are three distinct clusters which indicates the contrastive learning worked:
+ 
 <img alt="UMAP Visualization of HDBSCAN" height="400" src="assets/hdbscan-umap.png" width="500"/>
 <img alt="t-SNE Visualization of HDBSCAN" height="400" src="assets/hdbscan-tsne.png" width="500"/>
+
+Below are some example images from each cluster identified by HDBSCAN. There appears to be some color similarity and perhaps slight structure/shape similarity among each cluster which indicates that perhaps the model has focused too much on color rather than structure. Although color may be a useful tool for classifying galaxy morphology, it likely is not as important as strucuture and could be a confounding variable:
   
 <img alt="Example Images from Cluster Group 0" height="500" src="assets/group-0.png" width="500"/>
 <img alt="Example Images from Cluster Group 1" height="500" src="assets/group-1.png" width="500"/>
@@ -72,6 +75,17 @@ Clustering:
 
 ## Conclusion
 
+Outcomes:
 - Reconstructions were consistently really good
 - Denoising was solid with some minor imperfections/artifacts
 - Clustering/latent space representations were decent considering it did not have access to labeled data
+
+I had initially hoped my clusters would more closely resemble the different galaxy morphology classifications like the one below from another, more recent, Galaxy Zoo project named Galaxy Zoo: DECaLS:
+
+<img alt="Morpology Classifications from Galaxy Zoo: DECaLS" height="300" src="assets/gz_decals_morphology.png" width="600"/>
+
+Although contrastive learning did help make the latent space representations more robust, this proved to be quite challenging without introducing any labels. Additionally, these morphologies are closely related and inherent qualities from each other, so it is often difficult to assign one classification for each galaxy image. For example, see these images from the Galazy Zoo: Hubble project (Willett et. al, 2016) visualizing the decision tree:
+
+<img alt="Decision Tree Questions" height="500" src="assets/gz_hubble_decision_tree_questions.png" width="500"/>
+<img alt="Decision Tree Diagram" height="500" src="assets/gz_hubble_decision_tree_diagram.png" width="500"/>
+
