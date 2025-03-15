@@ -9,9 +9,9 @@ This project uses the Galaxy Zoo: Hubble (or GZ:H) dataset to de-noise, reconstr
 ## Data Overview
 
 The dataset was created using data collected by the Advanced Camera for Surveys (ACS) aboard the Hubble Space Telescope (HST) and a community of more than 80,000
-volunteers who classified galaxies. 
-It contains nearly 120,000 images of galaxies, each with an associated identifier, metadata, and vote fractions generated from the volunteers.
-Although the volunteer data was not used in this project, it may be useful to incorproate few-shot learning techniques or examine the clusters more closely.
+volunteers who classified galaxies. It contains nearly 120,000 images of galaxies, each with an associated identifier, metadata, and vote fractions generated from the volunteers. Although the volunteer data was not used in this project, it may be useful to incorproate few-shot learning techniques or examine the clusters more closely.
+
+The original data from the Galaxy Zoo project can be found here (https://data.galaxyzoo.org/#section-11), and the GitHub repository I used to download the images can be found here (https://github.com/mwalmsley/galaxy-datasets).
 
 <img alt="Data Sample" height="600" src="assets/data_sample.png" width="600"/>
 
@@ -96,3 +96,15 @@ Although contrastive learning did help make the latent space representations mor
 <img alt="Decision Tree Diagram" height="600" src="assets/gz_hubble_decision_tree_diagram.png" width="600"/>
 
 Although my initial goal was not met, my model still provides two useful tools while remaining entirely unsupervised: cleaning images and clustering images. Additionally, depending on your needs/goals, you could choose to use only one of these tools. By implementing some of the previously mentioned changes or through further tuning, I believe this model could perform even better and maybe even produce clusters that more closely resemble the morphology categories. Because only self-supervision was used, this model could easily be adapted for use in any of the other projects from Galaxy Zoo, such as GZ: 1, GZ: 2, GZ: CANDELS, GZ: DECaLS, and GZ: DESI. 
+
+## Acknowledgements
+
+Galaxy Zoo: morphological classifications for 120,000 galaxies in HST legacy imaging, Willet et. al (2016)
+
+U-Net: Convolutional Networks for Biomedical Image Segmentation, Ronneberger et. al (2015)
+
+A Simple Framework for Contrastive Learning of Visual Representations, Chen et. al (2020)
+
+The galaxy-datasets GitHub repository created by Dr. Mike Walmsley, a prominent researcher involved in the Galaxy Zoo project: https://github.com/mwalmsley/galaxy-datasets
+
+I acknowledge Research Advanced Computing Services (RACS) at the University of Oregon for providing computing resources that have contributed to the research results reported within this project. URL: https://racs.uoregon.edu.
