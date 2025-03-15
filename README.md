@@ -82,10 +82,10 @@ Outcomes:
 
 I had initially hoped my clusters would more closely resemble the different galaxy morphology classifications like the one below from another, more recent, Galaxy Zoo project named Galaxy Zoo: DECaLS:
 
-<img alt="Morpology Classifications from Galaxy Zoo: DECaLS" height="300" src="assets/gz_decals_morphology.png" width="600"/>
+<img alt="Morpology Classifications from Galaxy Zoo: DECaLS" height="400" src="assets/gz_decals_morphology.png" width="800"/>
 
 Although contrastive learning did help make the latent space representations more robust, this proved to be quite challenging without introducing any labels. Additionally, these morphologies are closely related and inherent qualities from each other, so it is often difficult to assign one classification for each galaxy image. For example, see these images from the Galazy Zoo: Hubble project (Willett et. al, 2016) visualizing the decision tree:
 
-<img alt="Decision Tree Questions" height="500" src="assets/gz_hubble_decision_tree_questions.png" width="500"/>
-<img alt="Decision Tree Diagram" height="500" src="assets/gz_hubble_decision_tree_diagram.png" width="500"/>
+<img alt="Decision Tree Questions" height="800" src="assets/gz_hubble_decision_tree_questions.png" width="700"/>
+<img alt="Decision Tree Diagram" height="600" src="assets/gz_hubble_decision_tree_diagram.png" width="600"/>
 
