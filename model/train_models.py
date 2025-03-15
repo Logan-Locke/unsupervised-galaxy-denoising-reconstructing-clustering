@@ -1,4 +1,6 @@
 print('Importing packages in train_models.py...')
+import os
+import torch
 import torch.optim as optim
 from tqdm import tqdm
 from dataset.dataset import (
@@ -9,6 +11,23 @@ from dataset.dataset import (
 )
 from models import *
 print('Done importing in train_models.py.')
+
+
+# ------------------
+# Helper function
+# ------------------
+
+def get_unique_model_path(model_class_name, base_dir="model/saved_models", ext=".pt"):
+    os.makedirs(base_dir, exist_ok=True)
+    base_path = os.path.join(base_dir, model_class_name)
+    file_path = base_path + ext
+    counter = 1
+
+    while os.path.exists(file_path):
+        file_path = f"{base_path}_{counter}{ext}"
+        counter += 1
+
+    return file_path
 
 
 # ------------------
@@ -103,8 +122,9 @@ def train_model(
         )
 
     if save_model:
-        torch.save(model.state_dict(), f"model/saved_models/{model.__class__.__name__}.pt")
-        print(f"Model saved to model/saved_models/{model.__class__.__name__}.pt")
+        save_path = get_unique_model_path(model.__class__.__name__)
+        torch.save(model.state_dict(), save_path)
+        print(f"Model saved to {save_path}")
 
 # avg_test_combined_autoencoder_loss, avg_test_background_loss, avg_test_galaxy_loss,
 # test_galaxy_ssim_score = evaluate_test_metrics()
@@ -124,7 +144,7 @@ if __name__ == "__main__":
     train_loader, val_loader, test_loader = get_data_loaders(
         full_catalog,
         double_view_transform,
-        batch_size=4,
+        batch_size=16,
         train_fraction=0.7,
         val_fraction=0.1,
         test_fraction=0.2,
@@ -147,6 +167,6 @@ if __name__ == "__main__":
         lambda_contrast=0.75,
         lambda_temperature=0.75,
         train_loader=train_loader,
-        early_stop=1,
+        early_stop=25,
         save_model=True
     )
