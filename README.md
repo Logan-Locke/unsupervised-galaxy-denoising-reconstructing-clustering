@@ -1,4 +1,4 @@
-# Galaxy Zoo CANDELS Project
+# Galaxy Zoo: Hubble Project
 
 This is my repository for the DSCI 410 Final Project.
 
@@ -11,7 +11,7 @@ This project uses the Galaxy Zoo: Hubble (or GZ:H) dataset to de-noise, reconstr
 The dataset was created using data collected by the Advanced Camera for Surveys (ACS) aboard the Hubble Space Telescope (HST) and a community of more than 80,000
 volunteers who classified galaxies. It contains nearly 120,000 images of galaxies, each with an associated identifier, metadata, and vote fractions generated from the volunteers. Although the volunteer data was not used in this project, it may be useful to incorproate few-shot learning techniques or examine the clusters more closely.
 
-The original data from the Galaxy Zoo project can be found here (https://data.galaxyzoo.org/#section-11), and the GitHub repository I used to download the images can be found here (https://github.com/mwalmsley/galaxy-datasets).
+The original data from the Galaxy Zoo project can be found [here](https://data.galaxyzoo.org/#section-11), and the GitHub repository I used to download the images can be found [here](https://github.com/mwalmsley/galaxy-datasets).
 
 <img alt="Data Sample" height="600" src="assets/data_sample.png" width="600"/>
 
@@ -99,12 +99,12 @@ Although my initial goal was not met, my model still provides two useful tools w
 
 ## Acknowledgements
 
-Galaxy Zoo: morphological classifications for 120,000 galaxies in HST legacy imaging, Willet et. al (2016)
+*U-Net: Convolutional Networks for Biomedical Image Segmentation*, Ronneberger et al. [2015](https://doi.org/10.48550/arXiv.1505.04597)
 
-U-Net: Convolutional Networks for Biomedical Image Segmentation, Ronneberger et. al (2015)
+*Galaxy Zoo: morphological classifications for 120,000 galaxies in HST legacy imaging*, Willet et al. [2016](https://doi.org/10.48550/arXiv.1610.03068)
 
-A Simple Framework for Contrastive Learning of Visual Representations, Chen et. al (2020)
+*A Simple Framework for Contrastive Learning of Visual Representations*, Chen et al. [2020](https://doi.org/10.48550/arXiv.2002.05709)
 
-The galaxy-datasets GitHub repository created by Dr. Mike Walmsley, a prominent researcher involved in the Galaxy Zoo project: https://github.com/mwalmsley/galaxy-datasets
+The [galaxy-datasets](https://github.com/mwalmsley/galaxy-datasets) GitHub repository created by Dr. Mike Walmsley, a prominent researcher involved in the Galaxy Zoo project
 
 I acknowledge Research Advanced Computing Services (RACS) at the University of Oregon for providing computing resources that have contributed to the research results reported within this project. URL: https://racs.uoregon.edu.
