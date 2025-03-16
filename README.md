@@ -97,9 +97,9 @@ For each of the images in the training dataset (~80,000), the following is creat
 
 ## Results
 
-Denoising/Reconstruction:
+### Denoising and Reconstruction:
 
-- Foreground SSIM score of ~0.96
+- Galaxy SSIM score of ~0.995
     - Value of 1 is considered "perfect"
 
 Fundamentally, autoencoders cannot reconstruct images that are cleaner than the target images—they
@@ -120,12 +120,12 @@ Below are some examples of how the model de-noises and reconstructs the input im
 <img alt="Denoising, Ex. 3" height="200" src="assets/denoising-2.png" width="550"/>
 <img alt="Denoising, Ex. 3" height="200" src="assets/denoising-3.png" width="550"/>
 
-**Clustering:**
+### Clustering:
 
 - HDBSCAN with three clusters:
-    - Silhouette Score of ~0.48
-- K-means with eight clusters:
-    - Silhouette Score of ~0.23
+    - Silhouette Score of ~0.40
+- K-means with three clusters:
+    - Silhouette Score of ~0.65
 - Values range from –1 to +1, where:
     - 0.25 = "weak"
     - 0.50 = "moderate"
