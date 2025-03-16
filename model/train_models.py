@@ -9,12 +9,12 @@ from dataset.dataset import (
     create_transforms,
     get_data_loaders,
 )
-from models import *
+from model.models import *
 print('Done importing in train_models.py.')
 
 
 # ------------------
-# Helper function
+# Helper functions
 # ------------------
 
 def get_unique_model_path(model_class_name, base_dir="model/saved_models", ext=".pt"):
@@ -74,7 +74,7 @@ def train_model(
     running = {"total": 0.0, "rec": 0.0, "gal": 0.0, "bg": 0.0, "contrast": 0.0}
     num_batches = 0
 
-    for batch_idx, (noisy1, noisy2, clean1, clean2, mask1, mask2) in enumerate(tqdm(train_loader, desc="Training Batches", leave=False)):
+    for batch_idx, (noisy1, noisy2, clean1, clean2, mask1, mask2) in enumerate(tqdm(train_loader, desc="Training...", leave=False)):
         if early_stop is not None and batch_idx >= early_stop:
             break
 
@@ -103,7 +103,7 @@ def train_model(
 
 def evaluate_model(
         model, data_loader, lambda_galaxy, lambda_background,
-        contrast_weight, lambda_temperature, early_stop
+        contrast_weight, lambda_temperature, early_stop=None
         ):
     model.eval()
     running = {"total": 0.0, "rec": 0.0, "gal": 0.0, "bg": 0.0, "contrast": 0.0}
@@ -131,18 +131,20 @@ def evaluate_model(
     metrics = {k: (v / num_batches) for k, v in running.items()}
     return metrics
 
+
 # ------------------
 # Training loop
 # ------------------
 
 def training_loop(
         model, num_epochs, learning_rate, lambda_galaxy, lambda_background, contrast_weight,
-        lambda_temperature, train_loader, val_loader, early_stop=None, log_val_metrics=False, save_model=True
+        lambda_temperature, train_loader, val_loader, early_stop=None, log_train_val_history=False,
+        save_model=True
 ):
     model.apply(init_weights_xav).to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Initialize histories
+    # Initialize metric histories
     train_history = {"total": [], "rec": [], "gal": [], "bg": [], "contrast": []}
     val_history = {"total": [], "rec": [], "gal": [], "bg": [], "contrast": []}
 
@@ -152,13 +154,13 @@ def training_loop(
             model, train_loader, optimizer, lambda_galaxy, lambda_background, contrast_weight,
             lambda_temperature, early_stop
         )
-        tqdm.write(
+        print(
             f"Epoch {epoch + 1}/{num_epochs} | "
             f"Train - Total: {train_metrics['total']:.3f} | Rec: {train_metrics['rec']:.3f} | "
             f"Gal: {train_metrics['gal']:.3f} | BG: {train_metrics['bg']:.3f} | Contrast: {train_metrics['contrast']:.3f}"
         )
 
-        if log_val_metrics:
+        if log_train_val_history:
             print(f"Evaluating on validation set...")
             val_metrics = evaluate_model(
                 model, val_loader, lambda_galaxy, lambda_background, contrast_weight,
@@ -170,26 +172,65 @@ def training_loop(
                 train_history[key].append(train_metrics[key])
                 val_history[key].append(val_metrics[key])
 
-            tqdm.write(
+            print(
                 f"Epoch {epoch+1}/{num_epochs} | Validation - Total: {val_metrics['total']:.3f} | Rec: {val_metrics['rec']:.3f} | "
                 f"Gal: {val_metrics['gal']:.3f} | BG: {val_metrics['bg']:.3f} | Contrast: {val_metrics['contrast']:.3f}"
             )
-        else:
-            for key in train_history:
-                train_history[key].append(train_metrics[key])
 
-    print(compute_test_metrics(model, test_loader, device))
 
     if save_model:
         save_path = get_unique_model_path(model.__class__.__name__)
         torch.save(model.state_dict(), save_path)
         print(f"Model saved to {save_path}")
 
+    if log_train_val_history:
+        return train_history, val_history
+
+
+def plot_train_val_metrics(train_history, val_history):
+    import matplotlib.pyplot as plt
+    epochs = range(1, len(train_history['total']) + 1)
+
+    plt.figure(figsize=(15, 5))
+
+    # Total Loss
+    plt.subplot(1, 3, 1)
+    plt.plot(epochs, train_history['total'], 'b-', label='Train')
+    plt.plot(epochs, val_history['total'], 'r-', label='Validation')
+    plt.title('Total Loss over Time')
+    plt.xlabel('Epoch')
+    plt.ylabel('Total Loss')
+    plt.xticks(epochs)
+    plt.legend()
+
+    # Reconstruction Loss
+    plt.subplot(1, 3, 2)
+    plt.plot(epochs, train_history['rec'], 'b-', label='Train')
+    plt.plot(epochs, val_history['rec'], 'r-', label='Validation')
+    plt.title('Reconstruction Loss over Time')
+    plt.xlabel('Epoch')
+    plt.ylabel('Reconstruction Loss')
+    plt.xticks(epochs)
+    plt.legend()
+
+    # Contrast Loss
+    plt.subplot(1, 3, 3)
+    plt.plot(epochs, train_history['contrast'], 'b-', label='Train')
+    plt.plot(epochs, val_history['contrast'], 'r-', label='Validation')
+    plt.title('Contrastive Loss over Time')
+    plt.xlabel('Epoch')
+    plt.ylabel('Contrastive Loss')
+    plt.xticks(epochs)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
 
 if __name__ == "__main__":
     # Initialize
     device = device_checker()
-    dataset_dir = 'data/gz_hubble'  # UPDATE THIS
+    dataset_dir = 'data/gz_hubble'  # '/projects/dsci410_510/gz_hubble'
     full_catalog = load_original_datasets(dataset_dir)
 
     # **IF USING GPU, UPDATE DATALOADER PARAMETERS**
@@ -199,22 +240,22 @@ if __name__ == "__main__":
     train_loader, val_loader, test_loader = get_data_loaders(
         full_catalog,
         double_view_transform,
-        batch_size=256,
+        batch_size=100,
         train_fraction=0.7,
         val_fraction=0.1,
         test_fraction=0.2,
-        num_workers=4,
-        prefetch_factor=4
+        num_workers=12,
+        prefetch_factor=12
     )
 
     unet_model = UNetAutoencoder()
     custom_model = CustomAutoencoder(
         activation_type='prelu',
-        latent_dim=32
+        latent_dim=64
     )
 
-    training_loop(
-        model=custom_model,
+    train_history, val_history = training_loop(
+        model=unet_model,
         num_epochs=3,
         learning_rate=1e-3,
         lambda_galaxy=0.8,
@@ -223,7 +264,10 @@ if __name__ == "__main__":
         lambda_temperature=0.75,
         train_loader=train_loader,
         val_loader=val_loader,
-        early_stop=10,
-        log_val_metrics=False,
+        early_stop=None,
+        log_train_val_history=True,
         save_model=True
     )
+
+    # Plot the metrics
+    plot_train_val_metrics(train_history, val_history)
