@@ -1,7 +1,5 @@
 # Galaxy Zoo: Hubble Project
 
-This is my repository for the DSCI 410 Final Project.
-
 ## Project Overview
 
 This project uses the Galaxy Zoo: Hubble (or GZ:H) dataset to de-noise, reconstruct, and cluster
