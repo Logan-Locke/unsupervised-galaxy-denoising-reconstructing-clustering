@@ -112,7 +112,7 @@ to remove the noise found in the background of the image.
 The noise that overlaps the galaxies
 themselves still largely remains intact for the reasons mentioned above, however.
 
-Below are some examples of how the model de-noises and reconstructs the input images.:
+Below are some examples of how the model de-noises and reconstructs the input images:
 
 <img alt="Denoising, Ex. 1" height="200" src="assets/denoising-1.png" width="550"/>
 <img alt="Denoising, Ex. 3" height="200" src="assets/denoising-2.png" width="550"/>
