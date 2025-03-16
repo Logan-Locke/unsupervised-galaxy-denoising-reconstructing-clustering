@@ -121,13 +121,21 @@ Below are some examples of how the model de-noises and reconstructs the input im
 ### Clustering:
 
 - HDBSCAN with three clusters:
-    - Silhouette Score of ~0.40
+   - Calinski-Harabasz Index: ~5,800
+   - Davies-Bouldin Index: ~1.15
+   - Silhouette: ~0.41
+
 - K-means with three clusters:
-    - Silhouette Score of ~0.65
-- Values range from –1 to +1, where:
-    - 0.25 = "weak"
-    - 0.50 = "moderate"
-    - 0.70 = "strong"
+   - Calinski-Harabasz Index: ~4,900
+   - Davies-Bouldin Index: ~1.11
+   - Silhouette: ~0.66
+
+Although K-means shows a higher Silhouette (~0.66) compared to HDBSCAN (~0.41), this metric can overestimate performance when every point is forced into a cluster. 
+I found that by using K-means, one cluster overwhelmingly dominates, which suggests that the high silhouette score might not reflect a truly natural grouping.
+Looking at the Calinski-Harabasz Index (CHI), HDBSCAN’s higher value (~5,800 vs. ~4,900) indicates that its clusters are better separated relative to their internal dispersion. 
+
+While K-means appears better based on the Silhouette and marginally better DBI, these metrics can be misleading due to the imbalanced cluster sizes and forced grouping often seen in K-means. 
+Because HDBSCAN naturally identifies outliers and produces more balanced clusters, the CHI (along with a visual examination of the clusters) provides a more objective measure and indicates HDBSCAN might reveal a more natural structure in the data.
 
 Below are the UMAP and t-SNE visualizations of the clusters identified by HDBSCAN. As you can see,
 there are three distinct clusters that indicate the contrastive learning worked:
