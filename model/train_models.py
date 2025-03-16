@@ -138,7 +138,7 @@ def evaluate_model(
 
 def training_loop(
         model, num_epochs, learning_rate, lambda_galaxy, lambda_background, contrast_weight,
-        lambda_temperature, train_loader, val_loader, early_stop=None, log_train_val_history=False,
+        contrast_temperature, train_loader, val_loader, early_stop=None, log_train_val_history=True,
         save_model=True
 ):
     model.apply(init_weights_xav).to(device)
@@ -152,7 +152,7 @@ def training_loop(
         # Train for one epoch
         train_metrics = train_model(
             model, train_loader, optimizer, lambda_galaxy, lambda_background, contrast_weight,
-            lambda_temperature, early_stop
+            contrast_temperature, early_stop
         )
         print(
             f"Epoch {epoch + 1}/{num_epochs} | "
@@ -164,7 +164,7 @@ def training_loop(
             print(f"Evaluating on validation set...")
             val_metrics = evaluate_model(
                 model, val_loader, lambda_galaxy, lambda_background, contrast_weight,
-                lambda_temperature, early_stop
+                contrast_temperature, early_stop
             )
 
             # Store each metric
@@ -233,25 +233,32 @@ if __name__ == "__main__":
     dataset_dir = 'data/gz_hubble'  # '/projects/dsci410_510/gz_hubble'
     full_catalog = load_original_datasets(dataset_dir)
 
-    # **IF USING GPU, UPDATE DATALOADER PARAMETERS**
+    # Define transforms
+    single_view_transform, double_view_transform = create_transforms(
+        poisson=150.0,
+        gaussian=10.0,
+        random_crop=(0.5, 1.0),
+        horizontal_flip=0.5,
+        random_rot=45,
+        color_jitter=(0.5, 0.5, 0.5, 0.1)
+    )
 
-    # Create dataloaders
-    single_view_transform, double_view_transform = create_transforms()
+    # Create loaders
     train_loader, val_loader, test_loader = get_data_loaders(
         full_catalog,
         double_view_transform,
-        batch_size=100,
+        batch_size=256,
         train_fraction=0.7,
         val_fraction=0.1,
         test_fraction=0.2,
-        num_workers=12,
-        prefetch_factor=12
+        num_workers=8,
+        prefetch_factor=8
     )
 
-    unet_model = UNetAutoencoder()
-    custom_model = CustomAutoencoder(
+    unet_model = UNetContrastiveAutoencoder()
+    custom_model = CustomContrastiveAutoencoder(
         activation_type='prelu',
-        latent_dim=64
+        latent_dims=64
     )
 
     train_history, val_history = training_loop(
@@ -261,7 +268,7 @@ if __name__ == "__main__":
         lambda_galaxy=0.8,
         lambda_background=0.2,
         contrast_weight=0.75,
-        lambda_temperature=0.75,
+        contrast_temperature=0.75,
         train_loader=train_loader,
         val_loader=val_loader,
         early_stop=None,

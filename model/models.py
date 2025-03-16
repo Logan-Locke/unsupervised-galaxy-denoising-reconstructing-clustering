@@ -9,7 +9,7 @@ print('Done importing in models.py.')
 
 
 # -----------------------------
-#  Weight initialization
+#  Weight Initialization
 # -----------------------------
 
 def init_weights_xav(m):
@@ -20,7 +20,7 @@ def init_weights_xav(m):
 
 
 # -------------------------------
-#  Autoencoder loss functions
+#  Autoencoder Loss Functions
 # -------------------------------
 
 ssim_loss_fn = SSIM(
@@ -96,7 +96,7 @@ def combined_autoencoder_loss(
 
 
 # --------------------------------------
-#  Contrastive learning loss function
+#  Contrastive Learning Loss Function
 # --------------------------------------
 
 # Computes NT-Xent (Normalized Temperature-Scaled Cross Entropy) loss
@@ -130,10 +130,10 @@ def nt_xent_loss(z1, z2, temperature=0.5):
     return loss
 
 # ---------------------------
-#  Test metrics computation
+#  Test Metrics Computation
 # ---------------------------
 
-def compute_test_metrics(model, test_loader, early_stop=None):
+def compute_test_metrics(model, device, test_loader, early_stop=None):
     # Initialize SSIM metric
     ssim_metric_denorm = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     ssim_metric_denorm.reset()
@@ -180,7 +180,7 @@ def compute_test_metrics(model, test_loader, early_stop=None):
 
 
 # -------------------------------------------
-#  Function to switch activation functions
+#  Function to Switch Activation Functions
 # -------------------------------------------
 
 activations = {
@@ -200,9 +200,9 @@ def get_activation_fn(activation_type):
     except KeyError:
         raise ValueError("Unknown activation type")
 
-# -------------------------------
-# Custom autoencoder components
-# -------------------------------
+# --------------------------------------------
+# Custom Contrastive Autoencoder Components
+# --------------------------------------------
 
 class EncoderBlock(nn.Module):
     def __init__(self, in_channels, out_channels, activation_fn_factory, kernel_size=3, stride=2,
@@ -237,17 +237,17 @@ class DecoderBlock(nn.Module):
         x = torch.cat([x, skip], dim=1)
         return self.conv(x)
 
-# ----------------------------
-# Custom autoencoder model
-# ----------------------------
+# --------------------------------------
+# Custom Contrastive Autoencoder Model
+# -------------------------------------
 
-class CustomAutoencoder(nn.Module):
-    def __init__(self, activation_type, latent_dim=128, activation_fn_factory=None):
+class CustomContrastiveAutoencoder(nn.Module):
+    def __init__(self, activation_type, latent_dims=128, activation_fn_factory=None):
         super().__init__()
 
         if activation_fn_factory is None:
             activation_fn_factory = get_activation_fn(activation_type)
-        self.latent_dim = latent_dim
+        self.latent_dim = latent_dims
 
         # Encoder blocks
         self.eb1 = EncoderBlock(3, 16, activation_fn_factory)
@@ -261,13 +261,13 @@ class CustomAutoencoder(nn.Module):
         # Latent mapping
         self.latent_encoder = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(128 * 7 * 7, latent_dim),
+            nn.Linear(128 * 7 * 7, latent_dims),
             activation_fn_factory()
         )
 
         # Latent expansion
         self.latent_decoder = nn.Sequential(
-            nn.Linear(latent_dim, 128 * 7 * 7),
+            nn.Linear(latent_dims, 128 * 7 * 7),
             activation_fn_factory()
         )
 
@@ -286,7 +286,7 @@ class CustomAutoencoder(nn.Module):
             nn.Flatten(),
             nn.Linear(128, 128),
             nn.ReLU(inplace=True),
-            nn.Linear(128, latent_dim)
+            nn.Linear(128, latent_dims)
         )
 
     def encode(self, x):
@@ -323,9 +323,9 @@ class CustomAutoencoder(nn.Module):
         return reconstruction
 
 
-# ------------------------------------
-# U-Net-style autoencoder components
-# ------------------------------------
+# ------------------------------------------------
+# U-Net-Style Contrastive Autoencoder Components
+# ------------------------------------------------
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -381,13 +381,13 @@ class FinalConvLayer(nn.Module):
     def forward(self, x):
         return self.conv(x)
 
-# -------------------------------
-# U-Net-style autoencoder model
-# -------------------------------
+# -------------------------------------------
+# U-Net-Style Contrastive Autoencoder Model
+# -------------------------------------------
 
-class UNetAutoencoder(nn.Module):
+class UNetContrastiveAutoencoder(nn.Module):
     def __init__(self, n_channels=3, n_classes=3, latent_dim=128):
-        super(UNetAutoencoder, self).__init__()
+        super(UNetContrastiveAutoencoder, self).__init__()
 
         # Initial double convolution
         self.initial_conv = DoubleConv(n_channels, 64)
