@@ -12,7 +12,9 @@ galsim
 tqdm
 plotly
 pytorch_msssim
-albumenations<2
+albumentations<2
 umap-learn
 hdbscan
 scikit-learn
+cupy
+cuml
