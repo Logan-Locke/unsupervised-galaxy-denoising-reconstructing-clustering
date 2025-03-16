@@ -129,13 +129,11 @@ def nt_xent_loss(z1, z2, temperature=0.5):
 
     return loss
 
+# ---------------------------
+#  Test metrics computation
+# ---------------------------
 
-# ----------------------
-#  Test set evaluation
-# ----------------------
-
-# Evaluates test metrics
-def compute_test_metrics(model, test_loader, device, early_stop=None):
+def compute_test_metrics(model, test_loader, early_stop=None):
     # Initialize SSIM metric
     ssim_metric_denorm = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     ssim_metric_denorm.reset()
