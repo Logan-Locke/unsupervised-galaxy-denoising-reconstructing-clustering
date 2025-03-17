@@ -22,21 +22,72 @@ the images can be found [here](https://github.com/mwalmsley/galaxy-datasets).
 
 <img alt="Data Sample" height="600" src="assets/data_sample.png" width="600"/>
 
-## Methods Overview
+## Model Architectures Overview
 
-The core component of each model is an autoencoder with a projection head attached that's used for
-contrastive learning.
+This repository includes two contrastive autoencoder models:
+`CustomContrastiveAutoencoder` and `UNetContrastiveAutoencoder`.
+Both models combine an autoencoding architecture with a projection head for contrastive learning,
+but they differ in their design, reconstruction strategy, and customizability.
 
-The autoencoder using binary image masking to separate the foreground (the galaxy) from the
-background, which is then used to calculate separate loss functions for each component.
-The background of each image uses a combination of total variation loss and a "darkening" loss.
-The foreground uses SSIM (Structural Similarity Index Measure) loss.
-The total autoencoder loss is the combination of the background and foreground losses.
+### Custom Contrastive Autoencoder:
 
-For the contrastive learning, NT-Xent (Normalized Temperature-Scaled Cross-Entropy) loss is used,
-which is then combined with the total autoencoder loss to obtain the loss for the entire model.
+- **Encoder:**
+    - **EncoderBlock:** Four sequential blocks (Conv2d → BatchNorm2d → Activation) progressively reduce the spatial dimensions.
+    - **Latent Mapping:** An AvgPool2d layer pools the final encoder output, which is then flattened and passed through a Linear layer (with activation) to create a latent vector.
 
-**The pre-processing pipeline:**
+- **Decoder:**
+    - **Latent Expansion:** A Linear layer expands the latent vector back to a spatial map.
+    - **DecoderBlock:** Four blocks that apply a ConvTranspose2d for upsampling, concatenate corresponding skip connections from the encoder, and refine the features using a Conv2d, BatchNorm2d, and Activation.
+    - **Final Upsampling:** A ConvTranspose2d layer reconstructs the output image.
+
+- **Contrastive Learning:**
+    - **Projection Head:** Consists of AdaptiveAvgPool2d, Flatten, and Linear layers (with activation) to extract a latent representation for contrastive loss.
+
+### U-Net-Style Contrastive Autoencoder
+
+- **Encoder:**
+   - **DoubleConv:** Begins with a DoubleConv block (two sequential Conv2d layers with BatchNorm2d and ReLU) to extract initial features.
+   - **DownsamplingBlock:** Three blocks combine MaxPool2d with DoubleConv to reduce spatial dimensions while increasing feature depth.
+
+- **Decoder:**
+   - **UpsamplingBlock:** Three blocks perform bilinear upsampling, concatenate skip connections from the encoder, and apply DoubleConv for feature refinement.
+   - **FinalConvLayer:** A 1×1 Conv2d produces the final reconstructed output.
+
+- **Contrastive Learning:**
+   - **Projection Head:** Attached to the bottleneck, it uses AdaptiveAvgPool2d, Flatten, and Linear layers (with ReLU) to generate the latent representation for contrastive tasks.
+
+### Key Differences
+
+* **Encoder Approach:**
+    * `CustomContrastiveAutoencoder`: Uses EncoderBlock with sequential convolutions and a fully connected latent mapping via average pooling and a Linear layer.
+    * `UNetContrastiveAutoencoder`: Utilizes DoubleConv within DownsamplingBlock to maintain a fully convolutional structure without an explicit fully connected transition.
+
+* **Decoder Strategy:**
+    * `CustomContrastiveAutoencoder`: Relies on DecoderBlock with transposed convolutions that incorporate skip connections and a separate latent expansion.
+    * `UNetContrastiveAutoencoder`: Uses UpsamplingBlock with bilinear upsampling and direct concatenation (skip connections) followed by DoubleConv, then a FinalConvLayer for reconstruction.
+
+* **Latent Mapping:**
+    * `CustomContrastiveAutoencoder`: Maps pooled encoder features to a latent vector via a Linear layer before decoding.
+    * `UNetContrastiveAutoencoder`: Derives the latent representation directly from the bottleneck features using its projection head.
+
+### Loss Functions and Masking
+
+These models leverage binary image masking to separate the foreground (the galaxy) from the background. This enables separate loss computations:
+
+* **Foreground (Galaxy) Loss:**
+    * The `galaxy_loss` function uses SSIM loss to ensure perceptually detailed reconstruction of the galaxy itself.
+
+* **Background Loss:**
+    * The `combined_background_loss` function applies total variation loss for smoothness and a “darkening” loss to enforce a darker background.
+
+* **Total Autoencoder Loss:**
+    * The `combined_autoencoder_loss` function merges the foreground and background losses using configurable weights..
+
+* **Contrastive Loss:**
+    * The `nt_xent_loss` function implements NT-Xent (Normalized Temperature-Scaled Cross-Entropy) loss on the projection head outputs, reinforcing robust latent representations.
+
+
+### The pre-processing pipeline
 
 1. Take a "clean" image (C)
 2. Duplicate C and apply random geometric transforms (C1, C2)
