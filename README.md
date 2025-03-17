@@ -58,36 +58,27 @@ but they differ in their design, reconstruction strategy, and customizability.
 
 ### Key Differences
 
-* **Encoder Approach:**
-    * `CustomContrastiveAutoencoder`: Uses EncoderBlock with sequential convolutions and a fully connected latent mapping via average pooling and a Linear layer.
-    * `UNetContrastiveAutoencoder`: Utilizes DoubleConv within DownsamplingBlock to maintain a fully convolutional structure without an explicit fully connected transition.
-
-* **Decoder Strategy:**
-    * `CustomContrastiveAutoencoder`: Relies on DecoderBlock with transposed convolutions that incorporate skip connections and a separate latent expansion.
-    * `UNetContrastiveAutoencoder`: Uses UpsamplingBlock with bilinear upsampling and direct concatenation (skip connections) followed by DoubleConv, then a FinalConvLayer for reconstruction.
-
-* **Latent Mapping:**
-    * `CustomContrastiveAutoencoder`: Maps pooled encoder features to a latent vector via a Linear layer before decoding.
-    * `UNetContrastiveAutoencoder`: Derives the latent representation directly from the bottleneck features using its projection head.
+The `CustomContrastiveAutoencoder` uses a conventional encoder composed of sequential convolutional blocks that progressively reduce the spatial dimensions.
+This is followed by average pooling and a linear layer that flattens the features into a latent vector.
+The latent vector is then expanded through another linear layer and decoded using transposed convolutions combined with skip connections that bring in corresponding encoder features.
+In contrast, the `UNetContrastiveAutoencoder` employs a fully convolutional, UNet-style architecture
+that preserves spatial details throughout the network by using DoubleConv blocks and max pooling for downsampling.
+It derives its latent representation directly from the bottleneck features using a projection head, and its decoder reconstructs the image through bilinear upsampling with concatenated skip connections and additional convolutional operations.
 
 ### Loss Functions and Masking
 
 These models leverage binary image masking to separate the foreground (the galaxy) from the background. This enables separate loss computations:
 
-* **Foreground (Galaxy) Loss:**
-    * The `galaxy_loss` function uses SSIM loss to ensure perceptually detailed reconstruction of the galaxy itself.
+* **Foreground (Galaxy) Loss:** The `galaxy_loss` function uses SSIM loss to ensure perceptually detailed reconstruction of the galaxy itself.
 
-* **Background Loss:**
-    * The `combined_background_loss` function applies total variation loss for smoothness and a “darkening” loss to enforce a darker background.
+* **Background Loss:** The `combined_background_loss` function applies total variation loss for smoothness and a “darkening” loss to enforce a darker background.
 
-* **Total Autoencoder Loss:**
-    * The `combined_autoencoder_loss` function merges the foreground and background losses using configurable weights..
+* **Total Autoencoder Loss:** The `combined_autoencoder_loss` function merges the foreground and background losses using configurable weights.
 
-* **Contrastive Loss:**
-    * The `nt_xent_loss` function implements NT-Xent (Normalized Temperature-Scaled Cross-Entropy) loss on the projection head outputs, reinforcing robust latent representations.
+* **Contrastive Loss:** The `nt_xent_loss` function implements NT-Xent (Normalized Temperature-Scaled Cross-Entropy) loss on the projection head outputs, reinforcing robust latent representations.
 
 
-### The pre-processing pipeline
+### The Prerocessing Pipeline
 
 1. Take a "clean" image (C)
 2. Duplicate C and apply random geometric transforms (C1, C2)
